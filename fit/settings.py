@@ -37,7 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework'
+    'rest_framework',
+    'authUser',
+    'plans',
+    'userProfile',
 ]
 
 MIDDLEWARE = [
@@ -68,7 +71,19 @@ TEMPLATES = [
     },
 ]
 
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Для использования JWT
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Требуется аутентификация для всех запросов
+    ],
+}
+
 WSGI_APPLICATION = 'fit.wsgi.application'
+
+AUTH_USER_MODEL = 'authUser.CustomUser'
 
 
 # Database
