@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Preferences, Exercise_Plan, Exercise, Plan, User_Plan
+from .models import Preferences, Weekly_Schedule, Exercises, Plan
 
 # Register your models here.
 admin.site.register(Preferences)
-admin.site.register(Exercise_Plan)
-admin.site.register(Exercise)
+admin.site.register(Weekly_Schedule)
+admin.site.register(Exercises)
 admin.site.register(Plan)
-admin.site.register(User_Plan)
+

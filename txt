@@ -1,0 +1,65 @@
+OpenAI response: {'id': 'chatcmpl-AZtFvgD0VbVO3jIub29Op3CIWKlMy', 'choices': [{'finish_reason': 'length', 'index': 0, 'logprobs': None, 'message': {'content': 'Конечно! Вот пример тренировочного плана в формате JSON для профессионала, который хочет набрать мышечную массу с акцентом на тяжёлую атлетику и базовые упражнения. Программа рассчитана на 6 месяцев с частотой тренировок 4 раза в неделю.\n\n```json\n{\n    "program_duration": "6 months",\n    "frequency": "4 times per week",\n    "goal": "muscle mass gain",\n    "preferences": "heavy lifting, compound exercises",\n    "weekly_schedule": [\n        {\n            "day": "Monday",\n            "focus": "Lower Body",\n            "exercises": [\n                {\n                    "name": "Squats",\n                    "sets": 4,\n                    "reps": "6-8",\n                    "rest": "2-3 minutes",\n                    "notes": "Focus on depth and form, use a weight that challenges you."\n                },\n                {\n                    "name": "Deadlifts",\n                    "sets": 4,\n                    "reps": "6-8",\n                    "rest": "2-3 minutes",\n                    "notes": "Maintain a straight back, engage core throughout."\n                },\n                {\n                    "name": "Lunges",\n                    "sets": 3,\n                    "reps": "8-10 per leg",\n                    "rest": "1-2 minutes",\n                    "notes": "Use dumbbells or a barbell for added resistance."\n                },\n                {\n                    "name": "Calf Raises",\n                    "sets": 4,\n                    "reps": "12-15",\n                    "rest": "1 minute",\n                    "notes": "Pause at the top for a better contraction."\n                }\n            ]\n        },\n        {\n            "day": "Wednesday",\n            "focus": "Upper Body",\n            "exercises": [\n                {\n                    "name": "Bench Press",\n                    "sets": 4,\n                    "reps": "6-8",\n                    "rest": "2-3 minutes",\n                    "notes": "Focus on full range of motion."\n                },\n                {\n                    "name": "Pull-Ups",\n                    "sets": 4,\n                    "reps": "6-8",\n                    "rest": "2-3 minutes",\n                    "notes": "Use a weight belt if needed."\n                },\n                {\n                    "name": "Overhead Press",\n                    "sets": 3', 'role': 'assistant', 'function_call': None, 'tool_calls': None, 'refusal': None}}], 'created': 1733117247, 'model': 'gpt-4o-2024-08-06', 'object': 'chat.completion', 'service_tier': None, 'system_fingerprint': 'fp_7f6be3efb0', 'usage': {'completion_tokens': 500, 'prompt_tokens': 81, 'total_tokens': 581, 'prompt_tokens_details': {'cached_tokens': 0, 'audio_tokens': 0}, 'completion_tokens_details': {'reasoning_tokens': 0, 'audio_tokens': 0, 'accepted_prediction_tokens': 0, 'rejected_prediction_tokens': 0}}}
+Конечно! Вот пример тренировочного плана в формате JSON для профессионала, который хочет набрать мышечную массу с акцентом на тяжёлую атлетику и базовые упражнения. Программа рассчитана на 6 месяцев с частотой тренировок 4 раза в неделю.
+
+```json
+{
+    "program_duration": "6 months",
+    "frequency": "4 times per week",
+    "goal": "muscle mass gain",
+    "preferences": "heavy lifting, compound exercises",
+    "weekly_schedule": [
+        {
+            "day": "Monday",
+            "focus": "Lower Body",
+            "exercises": [
+                {
+                    "name": "Squats",
+                    "sets": 4,
+                    "reps": "6-8",
+                    "rest": "2-3 minutes",
+                    "notes": "Focus on depth and form, use a weight that challenges you."
+                },
+                {
+                    "name": "Deadlifts",
+                    "sets": 4,
+                    "reps": "6-8",
+                    "rest": "2-3 minutes",
+                    "notes": "Maintain a straight back, engage core throughout."
+                },
+                {
+                    "name": "Lunges",
+                    "sets": 3,
+                    "reps": "8-10 per leg",
+                    "rest": "1-2 minutes",
+                    "notes": "Use dumbbells or a barbell for added resistance."
+                },
+                {
+                    "name": "Calf Raises",
+                    "sets": 4,
+                    "reps": "12-15",
+                    "rest": "1 minute",
+                    "notes": "Pause at the top for a better contraction."
+                }
+            ]
+        },
+        {
+            "day": "Wednesday",
+            "focus": "Upper Body",
+            "exercises": [
+                {
+                    "name": "Bench Press",
+                    "sets": 4,
+                    "reps": "6-8",
+                    "rest": "2-3 minutes",
+                    "notes": "Focus on full range of motion."
+                },
+                {
+                    "name": "Pull-Ups",
+                    "sets": 4,
+                    "reps": "6-8",
+                    "rest": "2-3 minutes",
+                    "notes": "Use a weight belt if needed."
+                },
+                {
+                    "name": "Overhead Press",
+                    "sets": 3

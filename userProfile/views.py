@@ -24,6 +24,7 @@ class ProfileView(APIView):
                 value={"detail": "Authentication credentials were not provided."},
             ),
         },
+        tags=['profile']
     )
 
     def get(self,request):
@@ -50,6 +51,7 @@ class ProfileView(APIView):
                 value={"message": {"field": "This field is required."}},
             ),
         },
+        tags=['profile']
     )
 
     def post(self,request):

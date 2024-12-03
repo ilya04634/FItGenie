@@ -14,17 +14,17 @@ class Preferences(models.Model):
 
     goal = models.CharField(max_length=150)
     experience_level = models.CharField(max_length=1, choices=exp_level_Choice, default="B")
-    workout_frequency = models.IntegerField( #сколько раз в неделю вы планируете тренироваться
+    workout_frequency = models.IntegerField(
         validators=[
-            MinValueValidator(1),  # min value 1
-            MaxValueValidator(7)  # max value 7
+            MinValueValidator(1),
+            MaxValueValidator(7)
         ]
     )
     prefer_workout_ex = models.CharField(max_length=150)
     time_of_program = models.IntegerField(
         validators=[
-            MinValueValidator(1),  # min value 1
-            MaxValueValidator(12)  # max value 12
+            MinValueValidator(1),
+            MaxValueValidator(12)
         ]
     )
 
@@ -36,39 +36,72 @@ class Preferences(models.Model):
 
 class Plan(models.Model):
     name = models.CharField(max_length=25)
-    created_by_ai = models.BooleanField(default=False)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    description = models.TextField(null=True, blank=True)
+    program_duration = models.IntegerField(null=True, blank=True)
+
 
     def __str__(self):
         return self.name
 
 
-class User_Plan(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
+class Weekly_Schedule(models.Model):
+    plan_id = models.ForeignKey(Plan, on_delete=models.CASCADE)
+    day = models.CharField(max_length=15, null=True)
+    focus = models.CharField(max_length=350, null=True)
 
     def __str__(self):
-        return self
+        return self.focus
 
 
-class Exercise(models.Model):
-    name = models.CharField(max_length=30)
-    sets = models.IntegerField(
-        validators=[
-            MinValueValidator(1),  # min value 1
-            MaxValueValidator(10)  # max value 12
-        ]
-    )
-    reps = models.IntegerField(null=True, blank=True)  # Опциональное поле для повторений
-    duration = models.IntegerField(null=True, blank=True)  # Опциональное поле для времени выполнения
+
+class Exercises(models.Model):
+    weekly_schedule_id = models.ForeignKey(Weekly_Schedule, on_delete=models.CASCADE)
+    name = models.CharField(max_length=25)
+    sets = models.CharField(max_length=15, null=True, blank=True)
+    reps = models.CharField(max_length=15, null=True, blank=True)
+    rest = models.CharField(max_length=25, null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+
 
     def __str__(self):
         return self.name
 
-class Exercise_Plan(models.Model):
-    plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
-    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
 
-    def __str__(self):
-        return self
+
+
+
+
+
+
+
+
+
+#
+# class User_Plan(models.Model):
+#     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+#     plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
+#
+#     def __str__(self):
+#         return self
+#
+#
+# class Exercise(models.Model):
+#     name = models.CharField(max_length=30)
+#     sets = models.IntegerField(
+#         validators=[
+#             MinValueValidator(1),  # min value 1
+#             MaxValueValidator(10)  # max value 12
+#         ]
+#     )
+#     reps = models.IntegerField(null=True, blank=True)  # Опциональное поле для повторений
+#     duration = models.IntegerField(null=True, blank=True)  # Опциональное поле для времени выполнения
+#
+#     def __str__(self):
+#         return self.name
+#
+# class Exercise_Plan(models.Model):
+#     plan = models.ForeignKey(Plan, on_delete=models.CASCADE)
+#     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+#
+#     def __str__(self):
+#         return self

@@ -1,18 +1,24 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .serializers import UserSerializer
+from django.utils import timezone
+from .models import CustomUser
+from .serializers import UserSerializer, EmailVerificationSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
-from drf_spectacular.types import OpenApiTypes
+import random
+
+from .utils import send_verification_email
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     @extend_schema(
         summary="Регистрация нового пользователя",
         description="Позволяет зарегистрировать нового пользователя, отправив данные через POST-запрос.",
-        request=UserSerializer,  # Описание структуры запроса
+        request=UserSerializer,
         responses={
             201: OpenApiExample(
                 "Успешный ответ",
@@ -22,14 +28,54 @@ class RegisterView(APIView):
                 "Ошибка валидации",
                 value={"email": ["This field is required."]}
             )
-        }
+        },
+
+        tags = ["auth"]
     )
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
-            user = serializer.save()  # Создаём нового пользователя
-            return Response({"message": "User created successfully"}, status=status.HTTP_201_CREATED)
+            code = random.randint(100000, 999999)
+            serializer.validated_data['code'] = code
+            user = serializer.save()
+            send_verification_email(user)
+            return Response({"message": "User created successfully. A verification code has been sent to your email."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CodeCheckVerifiedAPIView(APIView):
+    @extend_schema(
+        summary='верификация через код',
+        request=EmailVerificationSerializer,
+        tags=["auth"]
+    )
+    def post(self, request):
+        serializer = EmailVerificationSerializer(data=request.data)
+        if serializer.is_valid():
+            entered_code = serializer.validated_data['code']
+            user = request.user
+
+            try:
+                if entered_code == str(user.code):
+                    if user.is_verified:
+                        return Response({"message": "The verification code has already been used."},
+                                        status=status.HTTP_400_BAD_REQUEST)
+
+                    user.is_verified = True
+                    user.save()
+
+                return Response({"message": "Email verified successfully."}, status=status.HTTP_200_OK)
+
+            except CustomUser.DoesNotExist:
+
+                return Response({"error": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
 
 
 class CurrentUserView(APIView):
@@ -53,11 +99,12 @@ class CurrentUserView(APIView):
                 "Неавторизованный доступ",
                 value={"detail": "Authentication credentials were not provided."}
             )
-        }
+        },
+        tags=["auth"]
     )
 
     def get(self, request):
-        user = request.user  # Получаем текущего аутентифицированного пользователя
+        user = request.user
         return Response({
             "nickname": user.nickname,
             "email": user.email,
@@ -79,7 +126,8 @@ class CurrentUserView(APIView):
                 "Ошибка валидации",
                 value={"message": {"email": ["This field is required."]}}
             )
-        }
+        },
+        tags=["auth"]
     )
 
     def put(self, request):
@@ -91,3 +139,19 @@ class CurrentUserView(APIView):
             return Response({"message": "User updated successfully"}, status=status.HTTP_200_OK)
 
         return Response({"message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="удаление пользователя",
+        tags=["auth"]
+    )
+
+    def delete(self, request):
+
+        user = request.user
+
+        user.delete()
+        return Response({"message": "User updated successfully"}, status=status.HTTP_200_OK)
+
+
+
+
