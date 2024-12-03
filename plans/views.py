@@ -35,6 +35,9 @@ class PreferencesAPIView(APIView):
     )
     def post(self, request):
 
+        data = request.data.copy()  # Копируем данные запроса
+        data['user'] = request.user.id
+
         serializer = PreferencesSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -63,8 +66,8 @@ class PreferencesAPIView(APIView):
             except Preferences.DoesNotExist:
                 return Response({"error": "Preferences not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
-            # Возвращаем все объекты Preferences
-            preferences = Preferences.objects.all()
+
+            preferences = Preferences.objects.filter(user=request.user)
             serializer = PreferencesSerializer(preferences, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -88,7 +91,7 @@ class PreferencesAPIView(APIView):
 
     def put(self, request, pk):
         try:
-            preferences = Preferences.objects.get(pk=pk)
+            preferences = Preferences.objects.get(pk=pk, user=request.user)
         except Preferences.DoesNotExist:
             return Response({"error": "Preferences not found"}, status=status.HTTP_404_NOT_FOUND)
 
