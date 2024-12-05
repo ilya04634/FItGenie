@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from django.conf import settings
 from datetime import datetime, timedelta
+
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -18,7 +20,7 @@ client = OpenAI(
 )
 
 class PreferencesAPIView(APIView):
-
+    permission_classes = [IsAuthenticated]
 
     @extend_schema(
         summary="Создать предпочтения",
@@ -34,14 +36,13 @@ class PreferencesAPIView(APIView):
         tags=['preferences']
     )
     def post(self, request):
+        data = request.data.copy()
+        data['id_user'] = request.user.id
 
-        data = request.data.copy()  # Копируем данные запроса
-        data['user'] = request.user.id
-
-        serializer = PreferencesSerializer(data=request.data)
+        serializer = PreferencesSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({"message": "Preferences created successfully"}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @extend_schema(
@@ -56,7 +57,6 @@ class PreferencesAPIView(APIView):
         },
         tags=['preferences']
     )
-
     def get(self, request, pk=None):
         if pk:
             try:
@@ -67,7 +67,7 @@ class PreferencesAPIView(APIView):
                 return Response({"error": "Preferences not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
 
-            preferences = Preferences.objects.filter(user=request.user)
+            preferences = Preferences.objects.filter(id_user=request.user.id)
             serializer = PreferencesSerializer(preferences, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -91,7 +91,7 @@ class PreferencesAPIView(APIView):
 
     def put(self, request, pk):
         try:
-            preferences = Preferences.objects.get(pk=pk, user=request.user)
+            preferences = Preferences.objects.get(pk=pk, id_user=request.user.id)
         except Preferences.DoesNotExist:
             return Response({"error": "Preferences not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -116,7 +116,7 @@ class PreferencesAPIView(APIView):
     def delete(self, request, pk):
         user = request.user
         try:
-            preferences = Preferences.objects.get(pk=pk, user=user)
+            preferences = Preferences.objects.get(pk=pk, id_user=user.id)
             preferences.delete()
             return Response({"message": "Preferences deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         except Preferences.DoesNotExist:
@@ -125,6 +125,7 @@ class PreferencesAPIView(APIView):
 
 
 class GeneratePlanAPIView(APIView):
+    permission_classes = [IsAuthenticated]
     @extend_schema(
         summary="Сгенерировать тренировочный план",
         description=(
@@ -145,7 +146,9 @@ class GeneratePlanAPIView(APIView):
         tags=['plan generation']
     )
     def post(self, request):
-        preferences_serializer = PreferencesSerializer(data=request.data)
+        data = request.data.copy()
+        data['id_user'] = request.user.id
+        preferences_serializer = PreferencesSerializer(data=data)
         if preferences_serializer.is_valid():
             preferences = preferences_serializer.save()
 
@@ -226,7 +229,8 @@ class GeneratePlanAPIView(APIView):
                 plan = Plan.objects.create(
                     name=plan_data["name"],
                     description=plan_data["description"],
-                    program_duration=plan_data["program_duration"]
+                    program_duration=plan_data["program_duration"],
+                    id_user=request.user
                 )
 
                 for day in plan_data["weekly_schedule"]:

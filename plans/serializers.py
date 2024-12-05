@@ -4,10 +4,13 @@ from .models import Preferences, Plan, Exercises, Weekly_Schedule
 class PreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Preferences
+        # fields = ["goal", 'experience_level', 'workout_frequency', 'prefer_workout_ex', 'time_of_program']
         fields = '__all__'
+
 
     def create(self, validated_data):
         return Preferences.objects.create(**validated_data)
+
 
     def update(self, instance, validated_data):
         instance.experience_level = validated_data.pop("experience_level")

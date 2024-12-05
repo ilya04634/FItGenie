@@ -28,14 +28,14 @@ class Preferences(models.Model):
         ]
     )
 
-    id_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    id_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='preferences')
 
     def __str__(self):
         return self.experience_level
 
 
 class Plan(models.Model):
-    user_id = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    id_user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     name = models.CharField(max_length=25)
     description = models.TextField(null=True, blank=True)
     program_duration = models.IntegerField(null=True, blank=True)
