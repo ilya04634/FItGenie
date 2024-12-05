@@ -15,6 +15,7 @@ def send_verification_email(user):
         recipient_list=[user.email],
         fail_silently=False,
     )
+    print(user.email)
 
 
 

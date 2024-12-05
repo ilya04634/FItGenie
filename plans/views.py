@@ -206,163 +206,88 @@ class GeneratePlanAPIView(APIView):
                         {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": prompt}
                     ],
-                    max_tokens=400,
+                    max_tokens=1000,
                     temperature=0.6,
                 )
 
                 plan_dict = completion.model_dump()
                 plan_text = plan_dict["choices"][0]["message"]["content"]
 
-                # plan_text = completion['choices'][0]['message']['content']
-                plan_data = json.loads(plan_text)
-                print(plan_data)
+                cleaned_text = plan_text.replace("```json", "").strip()
+                cleaned_text = cleaned_text.replace("```", "").strip()
+
                 print(plan_text)
+
+                # plan_text = completion['choices'][0]['message']['content']
+                plan_data = json.loads(cleaned_text)
+                print(plan_data["name"])
+                print(plan_data["description"])
+
+                plan = Plan.objects.create(
+                    name=plan_data["name"],
+                    description=plan_data["description"],
+                    program_duration=plan_data["program_duration"]
+                )
+
+                for day in plan_data["weekly_schedule"]:
+                    weekly_schedule = Weekly_Schedule.objects.create(
+                        plan_id=plan,
+                        day=day["day"],
+                        focus=day["focus"]
+                    )
+
+                    for exercise in day["exercises"]:
+                        Exercises.objects.create(
+                            weekly_schedule_id=weekly_schedule,
+                            name=exercise["name"],
+                            sets=exercise["sets"],
+                            reps=exercise["reps"],
+                            rest=exercise["rest"],
+                            notes=exercise["notes"]
+                        )
+
+                #  "weekly_schedule": [
+                #     {{
+                #         "day": "string",
+                #         "focus": "string",
+                #         "exercises": [
+                #             {{
+                #                 "name": "string",
+                #                 "sets": "string",
+                #                 "reps": "string",
+                #                 "rest": "string",
+                #                 "notes": "string"
+                #             }}
+                #         ]
+                #     }}
+                # ]
+
+                # Получить id плана
+
+                # for day in plan_data["weekly_schedule"]:
+                #     # Создаешь сущность в таблице расписания, сохраняешь id
+                #
+                #     for exercise in day["exercises"]:
+                #
+                #         # Добавляю управжнение в базу данныех, добавляешь имя упражнения в exercisesNames
+
+
+
+
+                return Response({"plan": plan_data}, status=status.HTTP_200_OK)
+                #print(plan_text)
 
             except json.JSONDecodeError as e:
                 print(f"ошибка парсинга JSON")
 
 
-                plan_serializer = PlanSerializer(data=plan_data)
-                if plan_serializer.is_valid():
-                    plan_serializer.save()
-                    return Response(plan_serializer.data, status=status.HTTP_201_CREATED)
-                else:
-                    return Response(plan_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                # plan_serializer = PlanSerializer(data=plan_data)
+                # if plan_serializer.is_valid():
+                #     plan_serializer.save()
+                #     return Response(plan_serializer.data, status=status.HTTP_201_CREATED)
+                # else:
+                #     return Response(plan_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(preferences_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
-# class GeneratePlanAPIView(APIView):
-#     @extend_schema(
-#         summary="Сгенерировать тренировочный план",
-#         description=(
-#                 ".... "
-#
-#         ),
-#         request=PreferencesSerializer,
-#         responses={
-#             201: PlanSerializer,
-#             400: OpenApiExample(
-#                 "Ошибка валидации",
-#                 value={"error": "Invalid preferences data"}
-#             ),
-#             500: OpenApiExample(
-#                 "Ошибка сервера",
-#                 value={"error": "OpenAI error"}
-#             ),
-#         },
-#     )
-#     def post(self, request):
-#         preferences_serializer = PreferencesSerializer(data=request.data)
-#         if preferences_serializer.is_valid():
-#             preferences = preferences_serializer.save()
-#
-#
-#             prompt = f"""
-#             Составь тренировочный план в виде JSON в таком формате:
-#             {
-#             "name": "Mass Gain Plan",
-#             "description": "A 6-month program focused on gaining muscle mass.",
-#             "program_duration": 6,
-#             "weekly_schedule": [
-#                 {
-#                     "day": "Monday",
-#                     "focus": "Lower Body",
-#                     "exercises": [
-#                         {
-#                             "name": "Squats",
-#                             "sets": "4",
-#                             "reps": "6-8",
-#                             "rest": "2-3 minutes",
-#                             "notes": "Focus on depth and form, use a weight that challenges you."
-#                         },
-#                         {
-#                             "name": "Deadlifts",
-#                             "sets": "4",
-#                             "reps": "6-8",
-#                             "rest": "2-3 minutes",
-#                             "notes": "Maintain a straight back, engage core throughout."
-#                         }
-#                     ]
-#                 }
-#             ]
-#             }
-#             Уровень: {preferences.get_experience_level_display()} .
-#             Цель: {preferences.goal}. Частота тренировок: {preferences.workout_frequency} раз в неделю.
-#             Предпочтения: {preferences.prefer_workout_ex}. Программа рассчитана на {preferences.time_of_program} месяцев.
-#             """
-#             try:
-#                 # Отправляем запрос к OpenAI
-#                 completion = client.chat.completions.create(
-#                     model="gpt-4o",
-#                     messages=[
-#                         {"role": "system", "content": "You are a helpful assistant."},
-#                         {"role": "user", "content": prompt}],
-#                     max_tokens=1000,
-#                     temperature=0.6,
-#                 )
-#
-#                 plan_dict = completion.model_dump()
-#
-#                 plan_text = plan_dict["choices"][0]["message"]["content"]
-#                 print(plan_text)
-#
-#                 # Создаём объект плана
-#                 start_date = datetime.now().date()
-#                 end_date = start_date + timedelta(weeks=preferences.time_of_program * 4)
-#                 plan = Plan.objects.create(
-#                     name="AI-Generated Plan",
-#                     created_by_ai=True,
-#                     start_date=start_date,
-#                     end_date=end_date,
-#                 )
-#
-#                 # # Разбиваем сгенерированный план на упражнения
-#                 # exercises = self.parse_plan(plan_text)
-#                 # for exercise_data in exercises:
-#                 #     exercise, _ = Exercise.objects.get_or_create(
-#                 #         name=exercise_data["name"],
-#                 #         defaults={
-#                 #             "sets": exercise_data["sets"],
-#                 #             "reps": exercise_data.get("reps"),
-#                 #             "duration": exercise_data.get("duration"),
-#                 #         },
-#                 #     )
-#                 #     # Связываем упражнения с планом
-#                 #     Exercise_Plan.objects.create(plan=plan, exercise=exercise)
-#                 #
-#                 # # Связываем пользователя с планом
-#                 # User_Plan.objects.create(user=preferences.id_user, plan=plan)
-#
-#                 # Возвращаем успешный ответ
-#                 plan_serializer = PlanSerializer(plan)
-#                 return Response(plan_serializer.data, status=status.HTTP_201_CREATED)
-#
-#             except Exception as e:
-#                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-#         else:
-#             return Response(preferences_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
-#     def parse_plan(self, plan_text):
-#         exercises = []
-#
-#         for line in plan_text.split("\n"):
-#             if line.strip():
-#                 parts = line.split(",")
-#                 exercise_data = {
-#                     "name": parts[0].strip(),
-#                     "sets": int(parts[1].strip().split()[0]),
-#                 }
-#                 if len(parts) > 2:
-#                     if "reps" in parts[2]:
-#                         exercise_data["reps"] = int(parts[2].strip().split()[0])
-#                     if "minutes" in parts[2] or "seconds" in parts[2]:
-#                         exercise_data["duration"] = int(parts[2].strip().split()[0])
-#                 exercises.append(exercise_data)
-#         return exercises
-
-

@@ -1,7 +1,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.utils import timezone
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import CustomUser
 from .serializers import UserSerializer, EmailVerificationSerializer
 from rest_framework.permissions import IsAuthenticated
@@ -39,7 +39,14 @@ class RegisterView(APIView):
             serializer.validated_data['code'] = code
             user = serializer.save()
             send_verification_email(user)
-            return Response({"message": "User created successfully. A verification code has been sent to your email."}, status=status.HTTP_201_CREATED)
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
+            return Response({
+                "message": "User created successfully. A verification code has been sent to your email.",
+                "access": access_token,
+                "refresh": str(refresh)
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -64,7 +71,10 @@ class CodeCheckVerifiedAPIView(APIView):
                     user.is_verified = True
                     user.save()
 
-                return Response({"message": "Email verified successfully."}, status=status.HTTP_200_OK)
+                    return Response({"message": "Email verified successfully."}, status=status.HTTP_200_OK)
+
+                return Response({"error": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+
 
             except CustomUser.DoesNotExist:
 
@@ -110,7 +120,8 @@ class CurrentUserView(APIView):
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "id": user.id
+            "id": user.id,
+            "is_verified": user.is_verified
         })
 
     @extend_schema(
