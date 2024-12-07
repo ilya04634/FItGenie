@@ -24,40 +24,37 @@ class PreferencesSerializer(serializers.ModelSerializer):
         return instance
 
 
+# class ExerciseSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Exercises
+#         fields = ['name', 'sets', 'reps', 'rest', 'notes']
+#
+#
+# class WeeklyScheduleSerializer(serializers.ModelSerializer):
+#     exercises = ExerciseSerializer(many=True)
+#
+#     class Meta:
+#         model = Weekly_Schedule
+#         fields = ['day', 'focus', 'exercises']
+
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercises
-        fields = ['name', 'sets', 'reps', 'rest', 'notes']
-
+        fields = ["id", "name", "sets", "reps", "rest", "notes"]
 
 class WeeklyScheduleSerializer(serializers.ModelSerializer):
-    exercises = ExerciseSerializer(many=True)
+    exercises = ExerciseSerializer(many=True, read_only=True, source="exercises_set")
 
     class Meta:
         model = Weekly_Schedule
-        fields = ['day', 'focus', 'exercises']
-#
-#
-# class PlanSerializer(serializers.ModelSerializer):
-#     weekly_schedule = WeeklyScheduleSerializer(many=True)
-#
-#     class Meta:
-#         model = Plan
-#         fields = ['name', 'description', 'program_duration', 'weekly_schedule']
-#
-#     def create(self, validated_data):
-#         weekly_schedule_data = validated_data.pop('weekly_schedule')
-#         plan = Plan.objects.create(**validated_data)
-#
-#         for schedule_data in weekly_schedule_data:
-#             exercises_data = schedule_data.pop('exercises')
-#             schedule = Weekly_Schedule.objects.create(plan_id=plan, **schedule_data)
-#
-#             for exercise_data in exercises_data:
-#                 Exercises.objects.create(weekly_schedule_id=schedule, **exercise_data)
-#
-#         return plan
+        fields = ["id", "day", "focus", "exercises"]
 
+class PlanDetailSerializer(serializers.ModelSerializer):
+    weekly_schedule = WeeklyScheduleSerializer(many=True, read_only=True, source="weekly_schedule_set")
+
+    class Meta:
+        model = Plan
+        fields = ["id", "name", "description", "program_duration", "weekly_schedule"]
 
 class PlanSerializer(serializers.ModelSerializer):
     weekly_schedule = WeeklyScheduleSerializer(many=True)
@@ -81,3 +78,5 @@ class PlanSerializer(serializers.ModelSerializer):
                 Exercises.objects.create(weekly_schedule_id=schedule, **exercise_data)
 
         return plan
+
+

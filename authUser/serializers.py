@@ -27,6 +27,13 @@ class UserSerializer(serializers.ModelSerializer):
 
         return value
 
+    def validate_nickname(self, value):
+        if len(value) >25:
+            raise serializers.ValidationError("никнейм не должен содержать больше 25 символов")
+        if not re.search(r'[A-Za-z]', value):
+            raise serializers.ValidationError("никнейм должен содержать хотя бы 1 букву.")
+        return value
+
 
     def validate_password(self, value):
 
@@ -42,3 +49,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 class EmailVerificationSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=6)
+
+    def update(self, instance, validated_data):
+        instance.password = validated_data.pop('password')
+

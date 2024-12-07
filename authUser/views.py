@@ -1,3 +1,4 @@
+from django.contrib.auth import update_session_auth_hash
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -83,10 +84,111 @@ class CodeCheckVerifiedAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+    # def put(self, request):
+    #     pass
 
 
 
 
+
+
+class ChangePasswordView(APIView):
+
+    @extend_schema(
+        summary="Смена пароля пользователя",
+        tags=["auth"],
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "old_password": {
+                        "type": "string",
+                        "description": "Текущий пароль пользователя",
+                        "example": "old_password123"
+                    },
+                    "new_password": {
+                        "type": "string",
+                        "description": "Новый пароль пользователя",
+                        "example": "new_password456"
+                    },
+                    "confirm_password": {
+                        "type": "string",
+                        "description": "Подтверждение нового пароля",
+                        "example": "new_password456"
+                    }
+                },
+                "required": ["old_password", "new_password", "confirm_password"]
+            }
+        },
+        responses={
+            200: {
+                "description": "Пароль успешно изменен.",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "message": "Пароль успешно изменен."
+                        }
+                    }
+                }
+            },
+            400: {
+                "description": "Ошибки в данных запроса.",
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "missing_fields": {
+                                "summary": "Отсутствуют обязательные поля",
+                                "value": {"error": "Все поля обязательны для заполнения."}
+                            },
+                            "invalid_old_password": {
+                                "summary": "Неверный текущий пароль",
+                                "value": {"error": "Старый пароль указан неверно."}
+                            },
+                            "password_mismatch": {
+                                "summary": "Пароли не совпадают",
+                                "value": {"error": "Новый пароль и подтверждение не совпадают."}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
+    def post(self, request):
+        user = request.user
+        data = request.data
+
+        old_password = data.get("old_password")
+        new_password = data.get("new_password")
+        confirm_password = data.get("confirm_password")
+
+        if not old_password or not new_password or not confirm_password:
+            return Response(
+                {"error": "Все поля обязательны для заполнения."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not user.check_password(old_password):
+            return Response(
+                {"error": "Старый пароль указан неверно."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if new_password != confirm_password:
+            return Response(
+                {"error": "Новый пароль и подтверждение не совпадают."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.save()
+
+        update_session_auth_hash(request, user)
+
+        return Response(
+            {"message": "Пароль успешно изменен."},
+            status=status.HTTP_200_OK,
+        )
 
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
@@ -127,7 +229,7 @@ class CurrentUserView(APIView):
     @extend_schema(
         summary="Обновление информации о пользователе",
         description="Позволяет обновить данные текущего пользователя.",
-        request=UserSerializer,  # Описание структуры запроса
+        request=UserSerializer,
         responses={
             200: OpenApiExample(
                 "Успешное обновление",
@@ -161,7 +263,7 @@ class CurrentUserView(APIView):
         user = request.user
 
         user.delete()
-        return Response({"message": "User updated successfully"}, status=status.HTTP_200_OK)
+        return Response({"message": "User deleted successfully"}, status=status.HTTP_200_OK)
 
 
 

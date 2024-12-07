@@ -10,7 +10,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Preferences, Plan, Exercises, Weekly_Schedule
-from .serializers import PreferencesSerializer, PlanSerializer, ExerciseSerializer, WeeklyScheduleSerializer
+from .serializers import PreferencesSerializer, PlanSerializer, ExerciseSerializer, WeeklyScheduleSerializer, \
+    PlanDetailSerializer
 from drf_spectacular.utils import extend_schema, OpenApiExample
 
 load_dotenv()
@@ -154,7 +155,7 @@ class GeneratePlanAPIView(APIView):
 
 
             prompt = f"""
-            Составь тренировочный план в виде корректного JSON. Формат:
+            Составь тренировочный план на русском языке в виде корректного JSON. Формат:
             {{
                 "name": "string",
                 "description": "string",
@@ -206,7 +207,7 @@ class GeneratePlanAPIView(APIView):
                 completion = client.chat.completions.create(
                     model="gpt-4o",
                     messages=[
-                        {"role": "system", "content": "You are a helpful assistant."},
+                        {"role": "system", "content": "You are a good sport coach with large background."},
                         {"role": "user", "content": prompt}
                     ],
                     max_tokens=1000,
@@ -250,48 +251,26 @@ class GeneratePlanAPIView(APIView):
                             notes=exercise["notes"]
                         )
 
-                #  "weekly_schedule": [
-                #     {{
-                #         "day": "string",
-                #         "focus": "string",
-                #         "exercises": [
-                #             {{
-                #                 "name": "string",
-                #                 "sets": "string",
-                #                 "reps": "string",
-                #                 "rest": "string",
-                #                 "notes": "string"
-                #             }}
-                #         ]
-                #     }}
-                # ]
-
-                # Получить id плана
-
-                # for day in plan_data["weekly_schedule"]:
-                #     # Создаешь сущность в таблице расписания, сохраняешь id
-                #
-                #     for exercise in day["exercises"]:
-                #
-                #         # Добавляю управжнение в базу данныех, добавляешь имя упражнения в exercisesNames
-
-
-
-
                 return Response({"plan": plan_data}, status=status.HTTP_200_OK)
                 #print(plan_text)
 
             except json.JSONDecodeError as e:
                 print(f"ошибка парсинга JSON")
 
-
-                # plan_serializer = PlanSerializer(data=plan_data)
-                # if plan_serializer.is_valid():
-                #     plan_serializer.save()
-                #     return Response(plan_serializer.data, status=status.HTTP_201_CREATED)
-                # else:
-                #     return Response(plan_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response(preferences_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(
+        summary="Получить список сгенерированных планов",
+        description="Возвращает список всех сгенерированных планов текущего пользователя с их расписанием и упражнениями.",
+        responses={
+            200: PlanDetailSerializer(many=True),
+        },
+        tags=["plan generation"]
+    )
+    def get(self, request):
+        plans = Plan.objects.filter(id_user=request.user)
+        serializer = PlanDetailSerializer(plans, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
