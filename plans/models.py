@@ -10,8 +10,30 @@ class Preferences(models.Model):
         ("M", 'middle'),
         ("P", 'professional'),
     ]
+    gender_choice = [
+        ("M", 'male'),
+        ("F", 'female')
+    ]
 
-
+    gender = models.CharField(max_length=1, choices=gender_choice)
+    age = models.IntegerField(
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(120)
+        ]
+    )
+    height = models.FloatField(
+        validators=[
+            MinValueValidator(30.0),
+            MaxValueValidator(250.0)
+        ]
+    )
+    weight = models.FloatField(
+        validators=[
+            MinValueValidator(2.0),
+            MaxValueValidator(300.0)
+        ]
+    )
     goal = models.CharField(max_length=150)
     experience_level = models.CharField(max_length=1, choices=exp_level_Choice, default="B")
     workout_frequency = models.IntegerField(

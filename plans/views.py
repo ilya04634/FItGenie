@@ -153,7 +153,6 @@ class GeneratePlanAPIView(APIView):
         if preferences_serializer.is_valid():
             preferences = preferences_serializer.save()
 
-
             prompt = f"""
             Составь тренировочный план на русском языке в виде корректного JSON. Формат:
             {{
@@ -178,29 +177,36 @@ class GeneratePlanAPIView(APIView):
             }}
             Пример:
             {{
-                "name": "Mass Gain Plan",
-                "description": "A 6-month program focused on gaining muscle mass.",
+                "name": "План набора массы",
+                "description": "Шестимесячная программа для набора мышечной массы.",
                 "program_duration": 6,
                 "weekly_schedule": [
                     {{
-                        "day": "Monday",
-                        "focus": "Lower Body",
+                        "day": "Понедельник",
+                        "focus": "Нижняя часть тела",
                         "exercises": [
                             {{
-                                "name": "Squats",
+                                "name": "Приседания",
                                 "sets": "4",
                                 "reps": "6-8",
-                                "rest": "2-3 minutes",
-                                "notes": "Focus on depth and form, use a weight that challenges you."
+                                "rest": "2-3 минуты",
+                                "notes": "Сосредоточьтесь на технике и глубине, используйте рабочий вес."
                             }}
                         ]
                     }}
                 ]
             }}
-            Уровень: {preferences.get_experience_level_display()}.
-            Цель: {preferences.goal}. Частота тренировок: {preferences.workout_frequency} раз в неделю.
-            Предпочтения: {preferences.prefer_workout_ex}. Программа рассчитана на {preferences.time_of_program} месяцев.
-            Верни только JSON без пояснений, комментариев или текста.
+            Пол: {preferences.get_gender_display() or "не указан"}.
+            Возраст: {preferences.age or "не указан"}.
+            Рост: {preferences.height or "не указан"} см.
+            Вес: {preferences.weight or "не указан"} кг.
+            Уровень подготовки: {preferences.get_experience_level_display() or "не указан"}.
+            Цель: {preferences.goal or "не указана"}.
+            Частота тренировок: {preferences.workout_frequency or "не указана"} раза в неделю.
+            Предпочтения: {preferences.prefer_workout_ex or "не указаны"}.
+            Программа рассчитана на {preferences.time_of_program or "не указано"} месяцев.
+
+            Ответ должен быть строго в формате JSON без пояснений, комментариев, текста или примеров. Только корректный JSON.
             """
             try:
 
@@ -210,7 +216,7 @@ class GeneratePlanAPIView(APIView):
                         {"role": "system", "content": "You are a good sport coach with large background."},
                         {"role": "user", "content": prompt}
                     ],
-                    max_tokens=1000,
+                    max_tokens=1500,
                     temperature=0.6,
                 )
 
@@ -220,7 +226,7 @@ class GeneratePlanAPIView(APIView):
                 cleaned_text = plan_text.replace("```json", "").strip()
                 cleaned_text = cleaned_text.replace("```", "").strip()
 
-                print(plan_text)
+                print(cleaned_text)
 
                 # plan_text = completion['choices'][0]['message']['content']
                 plan_data = json.loads(cleaned_text)
@@ -255,22 +261,57 @@ class GeneratePlanAPIView(APIView):
                 #print(plan_text)
 
             except json.JSONDecodeError as e:
-                print(f"ошибка парсинга JSON")
+                return Response({"error": "Ошибка парсинга JSON", "details": str(e)},
+                                status=status.HTTP_400_BAD_REQUEST)
 
             except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
-            return Response(preferences_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Неизвестная ошибка", "details": str(e)},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(preferences_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
     @extend_schema(
         summary="Получить список сгенерированных планов",
-        description="Возвращает список всех сгенерированных планов текущего пользователя с их расписанием и упражнениями.",
         responses={
             200: PlanDetailSerializer(many=True),
         },
         tags=["plan generation"]
     )
-    def get(self, request):
-        plans = Plan.objects.filter(id_user=request.user)
-        serializer = PlanDetailSerializer(plans, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def get(self, request, pk=None):
+        if pk:
+            try:
+                plan = Plan.objects.get(pk=pk, id_user=request.user)
+                serializer = PlanDetailSerializer(plan)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Plan.DoesNotExist:
+                return Response({"error": "План не найден"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            plans = Plan.objects.filter(id_user=request.user)
+            serializer = PlanDetailSerializer(plans, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="удалить план",
+        responses={
+            200: PlanDetailSerializer(many=True),
+        },
+        tags=["plan generation"]
+    )
+    def delete(self, request, pk=None):
+        if pk:
+            try:
+                plan = Plan.objects.get(pk=pk, id_user=request.user)
+                plan.delete()
+                return Response({"message": "План успешно удалён"}, status=status.HTTP_200_OK)
+            except Plan.DoesNotExist:
+                return Response({"error": "План не найден"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({"error": "Не указан ID плана"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # def get(self, request):
+    #     plans = Plan.objects.filter(id_user=request.user)
+    #     serializer = PlanDetailSerializer(plans, many=True)
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
