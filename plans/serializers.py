@@ -11,17 +11,16 @@ class PreferencesSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return Preferences.objects.create(**validated_data)
 
-
     def update(self, instance, validated_data):
-        instance.gender = validated_data.get('gender')
-        instance.age = validated_data.get('age')
-        instance.weight = validated_data.get('weight')
-        instance.height = validated_data.get('height')
-        instance.experience_level = validated_data.pop("experience_level")
-        instance.goal = validated_data.pop("goal")
-        instance.workout_frequency = validated_data.pop("workout_frequency")
-        instance.prefer_workout_ex = validated_data.pop("prefer_workout_ex")
-        instance.time_of_program = validated_data.pop("time_of_program")
+        instance.gender = validated_data.get('gender', instance.gender)
+        instance.age = validated_data.get('age', instance.age)
+        instance.weight = validated_data.get('weight', instance.weight)
+        instance.height = validated_data.get('height', instance.height)
+        instance.experience_level = validated_data.get('experience_level', instance.experience_level)
+        instance.goal = validated_data.get('goal', instance.goal)
+        instance.workout_frequency = validated_data.get('workout_frequency', instance.workout_frequency)
+        instance.prefer_workout_ex = validated_data.get('prefer_workout_ex', instance.prefer_workout_ex)
+        instance.time_of_program = validated_data.get('time_of_program', instance.time_of_program)
 
         instance.save()
         return instance

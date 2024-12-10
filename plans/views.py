@@ -58,10 +58,10 @@ class PreferencesAPIView(APIView):
         },
         tags=['preferences']
     )
-    def get(self, request, pk=None):
-        if pk:
+    def get(self, request, preferences_pk=None):
+        if preferences_pk:
             try:
-                preferences = Preferences.objects.get(pk=pk)
+                preferences = Preferences.objects.get(pk=preferences_pk)
                 serializer = PreferencesSerializer(preferences)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Preferences.DoesNotExist:
@@ -90,9 +90,9 @@ class PreferencesAPIView(APIView):
         tags=['preferences']
     )
 
-    def put(self, request, pk):
+    def put(self, request, preferences_pk):
         try:
-            preferences = Preferences.objects.get(pk=pk, id_user=request.user.id)
+            preferences = Preferences.objects.get(pk=preferences_pk, id_user=request.user.id)
         except Preferences.DoesNotExist:
             return Response({"error": "Preferences not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -114,10 +114,10 @@ class PreferencesAPIView(APIView):
         tags=['preferences']
     )
 
-    def delete(self, request, pk):
+    def delete(self, request, preferences_pk):
         user = request.user
         try:
-            preferences = Preferences.objects.get(pk=pk, id_user=user.id)
+            preferences = Preferences.objects.get(pk=preferences_pk, id_user=user.id)
             preferences.delete()
             return Response({"message": "Preferences deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         except Preferences.DoesNotExist:
@@ -146,129 +146,127 @@ class GeneratePlanAPIView(APIView):
         },
         tags=['plan generation']
     )
-    def post(self, request):
-        data = request.data.copy()
-        data['id_user'] = request.user.id
-        preferences_serializer = PreferencesSerializer(data=data)
-        if preferences_serializer.is_valid():
-            preferences = preferences_serializer.save()
+    def post(self, request, preferences_pk):
+        try:
+            preferences = Preferences.objects.get(pk=preferences_pk, id_user=request.user.id)
+        except Preferences.DoesNotExist:
+            return Response({"error": "предпочтения не найдены"}, status=status.HTTP_404_NOT_FOUND)
 
-            prompt = f"""
-            Составь тренировочный план на русском языке в виде корректного JSON. Формат:
-            {{
-                "name": "string",
-                "description": "string",
-                "program_duration": "integer",
-                "weekly_schedule": [
-                    {{
-                        "day": "string",
-                        "focus": "string",
-                        "exercises": [
-                            {{
-                                "name": "string",
-                                "sets": "string",
-                                "reps": "string",
-                                "rest": "string",
-                                "notes": "string"
-                            }}
-                        ]
-                    }}
-                ]
-            }}
-            Пример:
-            {{
-                "name": "План набора массы",
-                "description": "Шестимесячная программа для набора мышечной массы.",
-                "program_duration": 6,
-                "weekly_schedule": [
-                    {{
-                        "day": "Понедельник",
-                        "focus": "Нижняя часть тела",
-                        "exercises": [
-                            {{
-                                "name": "Приседания",
-                                "sets": "4",
-                                "reps": "6-8",
-                                "rest": "2-3 минуты",
-                                "notes": "Сосредоточьтесь на технике и глубине, используйте рабочий вес."
-                            }}
-                        ]
-                    }}
-                ]
-            }}
-            Пол: {preferences.get_gender_display() or "не указан"}.
-            Возраст: {preferences.age or "не указан"}.
-            Рост: {preferences.height or "не указан"} см.
-            Вес: {preferences.weight or "не указан"} кг.
-            Уровень подготовки: {preferences.get_experience_level_display() or "не указан"}.
-            Цель: {preferences.goal or "не указана"}.
-            Частота тренировок: {preferences.workout_frequency or "не указана"} раза в неделю.
-            Предпочтения: {preferences.prefer_workout_ex or "не указаны"}.
-            Программа рассчитана на {preferences.time_of_program or "не указано"} месяцев.
+        prompt = f"""
+        Составь тренировочный план на русском языке в виде корректного JSON. Формат:
+        {{
+            "name": "string",
+            "description": "string",
+            "program_duration": "integer",
+            "weekly_schedule": [
+                {{
+                    "day": "string",
+                    "focus": "string",
+                    "exercises": [
+                        {{
+                            "name": "string",
+                            "sets": "string",
+                            "reps": "string",
+                            "rest": "string",
+                            "notes": "string"
+                        }}
+                    ]
+                }}
+            ]
+        }}
+        Пример:
+        {{
+            "name": "План набора массы",
+            "description": "Шестимесячная программа для набора мышечной массы.",
+            "program_duration": 6,
+            "weekly_schedule": [
+                {{
+                    "day": "Понедельник",
+                    "focus": "Нижняя часть тела",
+                    "exercises": [
+                        {{
+                            "name": "Приседания",
+                            "sets": "4",
+                            "reps": "6-8",
+                            "rest": "2-3 минуты",
+                            "notes": "Сосредоточьтесь на технике и глубине, используйте рабочий вес."
+                        }}
+                    ]
+                }}
+            ]
+        }}
+        Пол: {preferences.get_gender_display() or "не указан"}.
+        Возраст: {preferences.age or "не указан"}.
+        Рост: {preferences.height or "не указан"} см.
+        Вес: {preferences.weight or "не указан"} кг.
+        Уровень подготовки: {preferences.get_experience_level_display() or "не указан"}.
+        Цель: {preferences.goal or "не указана"}.
+        Частота тренировок: {preferences.workout_frequency or "не указана"} раза в неделю.
+        Предпочтения: {preferences.prefer_workout_ex or "не указаны"}.
+        Программа рассчитана на {preferences.time_of_program or "не указано"} месяцев.
 
-            Ответ должен быть строго в формате JSON без пояснений, комментариев, текста или примеров. Только корректный JSON.
-            """
-            try:
+        Ответ должен быть строго в формате JSON без пояснений, комментариев, текста или примеров. Только корректный JSON.
+        """
+        try:
 
-                completion = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "You are a good sport coach with large background."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    max_tokens=1500,
-                    temperature=0.6,
+            completion = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a good sport coach with large background."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=1500,
+                temperature=0.6,
+            )
+
+            plan_dict = completion.model_dump()
+            plan_text = plan_dict["choices"][0]["message"]["content"]
+
+            cleaned_text = plan_text.replace("```json", "").strip()
+            cleaned_text = cleaned_text.replace("```", "").strip()
+
+            print(cleaned_text)
+
+            # plan_text = completion['choices'][0]['message']['content']
+            plan_data = json.loads(cleaned_text)
+            print(plan_data["name"])
+            print(plan_data["description"])
+
+            plan = Plan.objects.create(
+                name=plan_data["name"],
+                description=plan_data["description"],
+                program_duration=plan_data["program_duration"],
+                id_user=request.user,
+                id_preferences = Preferences.objects.get(pk=plan_data["preferences"])
+            )
+
+            for day in plan_data["weekly_schedule"]:
+                weekly_schedule = Weekly_Schedule.objects.create(
+                    plan_id=plan,
+                    day=day["day"],
+                    focus=day["focus"]
                 )
 
-                plan_dict = completion.model_dump()
-                plan_text = plan_dict["choices"][0]["message"]["content"]
-
-                cleaned_text = plan_text.replace("```json", "").strip()
-                cleaned_text = cleaned_text.replace("```", "").strip()
-
-                print(cleaned_text)
-
-                # plan_text = completion['choices'][0]['message']['content']
-                plan_data = json.loads(cleaned_text)
-                print(plan_data["name"])
-                print(plan_data["description"])
-
-                plan = Plan.objects.create(
-                    name=plan_data["name"],
-                    description=plan_data["description"],
-                    program_duration=plan_data["program_duration"],
-                    id_user=request.user
-                )
-
-                for day in plan_data["weekly_schedule"]:
-                    weekly_schedule = Weekly_Schedule.objects.create(
-                        plan_id=plan,
-                        day=day["day"],
-                        focus=day["focus"]
+                for exercise in day["exercises"]:
+                    Exercises.objects.create(
+                        weekly_schedule_id=weekly_schedule,
+                        name=exercise["name"],
+                        sets=exercise["sets"],
+                        reps=exercise["reps"],
+                        rest=exercise["rest"],
+                        notes=exercise["notes"]
                     )
 
-                    for exercise in day["exercises"]:
-                        Exercises.objects.create(
-                            weekly_schedule_id=weekly_schedule,
-                            name=exercise["name"],
-                            sets=exercise["sets"],
-                            reps=exercise["reps"],
-                            rest=exercise["rest"],
-                            notes=exercise["notes"]
-                        )
+            return Response({"plan": plan_data}, status=status.HTTP_200_OK)
+            #print(plan_text)
 
-                return Response({"plan": plan_data}, status=status.HTTP_200_OK)
-                #print(plan_text)
+        except json.JSONDecodeError as e:
+            return Response({"error": "Ошибка парсинга JSON", "details": str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-            except json.JSONDecodeError as e:
-                return Response({"error": "Ошибка парсинга JSON", "details": str(e)},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-            except Exception as e:
-                return Response({"error": "Неизвестная ошибка", "details": str(e)},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        return Response(preferences_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": "Неизвестная ошибка", "details": str(e)},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
     @extend_schema(
@@ -278,14 +276,26 @@ class GeneratePlanAPIView(APIView):
         },
         tags=["plan generation"]
     )
-    def get(self, request, pk=None):
-        if pk:
+    def get(self, request, preferences_pk=None, plan_pk=None):
+        if preferences_pk and plan_pk:
             try:
-                plan = Plan.objects.get(pk=pk, id_user=request.user)
+                plan = Plan.objects.get(pk=plan_pk, id_preferences_id=preferences_pk, id_user=request.user)
                 serializer = PlanDetailSerializer(plan)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Plan.DoesNotExist:
                 return Response({"error": "План не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+        elif preferences_pk:
+            plans = Plan.objects.filter(id_preferences_id=preferences_pk, id_user=request.user)
+            serializer = PlanDetailSerializer(plans, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        elif plan_pk:
+            plans = Plan.objects.filter(pk=plan_pk, id_user=request.user)
+            serializer = PlanDetailSerializer(plans, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+
         else:
             plans = Plan.objects.filter(id_user=request.user)
             serializer = PlanDetailSerializer(plans, many=True)
@@ -298,16 +308,34 @@ class GeneratePlanAPIView(APIView):
         },
         tags=["plan generation"]
     )
-    def delete(self, request, pk=None):
-        if pk:
+    def delete(self, request, preferences_pk=None, plan_pk=None):
+        if preferences_pk and plan_pk:
             try:
-                plan = Plan.objects.get(pk=pk, id_user=request.user)
+                plan = Plan.objects.get(pk=plan_pk, id_preferences_id=preferences_pk, id_user=request.user)
                 plan.delete()
                 return Response({"message": "План успешно удалён"}, status=status.HTTP_200_OK)
             except Plan.DoesNotExist:
                 return Response({"error": "План не найден"}, status=status.HTTP_404_NOT_FOUND)
+
+        elif preferences_pk:
+            plans = Plan.objects.filter(id_preferences_id=preferences_pk, id_user=request.user)
+            if plans.exists():
+                plans.delete()
+                return Response({"message": "Планы успешно удалены"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Планы для указанных предпочтений не найдены"},
+                                status=status.HTTP_404_NOT_FOUND)
+
+        elif plan_pk:
+            try:
+                plan = Plan.objects.get(pk=plan_pk, id_user=request.user)
+                plan.delete()
+                return Response({"message": "План успешно удалён"}, status=status.HTTP_200_OK)
+            except Plan.DoesNotExist:
+                return Response({"error": "План не найден"}, status=status.HTTP_404_NOT_FOUND)
+
         else:
-            return Response({"error": "Не указан ID плана"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Не указаны ID предпочтений или плана"}, status=status.HTTP_400_BAD_REQUEST)
 
     # def get(self, request):
     #     plans = Plan.objects.filter(id_user=request.user)
