@@ -1,10 +1,12 @@
 import os
 import json
 from dotenv import load_dotenv
+from drf_spectacular.types import OpenApiTypes
 from openai import OpenAI
 from django.conf import settings
 from datetime import datetime, timedelta
 
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,7 +14,7 @@ from rest_framework import status
 from .models import Preferences, Plan, Exercises, Weekly_Schedule
 from .serializers import PreferencesSerializer, PlanSerializer, ExerciseSerializer, WeeklyScheduleSerializer, \
     PlanDetailSerializer
-from drf_spectacular.utils import extend_schema, OpenApiExample
+from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiResponse, OpenApiParameter
 
 load_dotenv()
 
@@ -20,18 +22,51 @@ client = OpenAI(
     api_key=settings.OPENAI_API_KEY
 )
 
+
+class CustomPagination(PageNumberPagination):
+    page_size = 2  # Количество элементов на странице по умолчанию
+    page_size_query_param = 'page_size'  # Позволяет клиенту запрашивать больше или меньше элементов
+    max_page_size = 10  # Максимальное количество элементов на странице
+
+
 class PreferencesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
         summary="Создать предпочтения",
         description="Создаёт новый объект Preferences.",
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="Bearer eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
         request=PreferencesSerializer,
         responses={
-            201: PreferencesSerializer,
-            400: OpenApiExample(
-                "Ошибка валидации",
-                value={"error": "Invalid data"}
+            201: OpenApiResponse(
+                response=PreferencesSerializer,
+                description="Объект Preferences создан успешно."
+            ),
+            400: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        "Ошибка валидации",
+                        summary="Ошибка валидации данных",
+                        description="Предоставлены некорректные данные.",
+                        value={"error": "Invalid data"}
+                    )
+                ]
             )
         },
         tags=['preferences']
@@ -49,42 +84,105 @@ class PreferencesAPIView(APIView):
     @extend_schema(
         summary="Получить предпочтения",
         description="Возвращает объект Preferences по ID или список всех объектов, если ID не указан.",
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="Bearer eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
         responses={
-            200: PreferencesSerializer(many=True),
-            404: OpenApiExample(
-                "Объект не найден",
-                value={"error": "Preferences not found"}
+            200: OpenApiResponse(
+                response=PreferencesSerializer(many=True),
+                description="Успешное получение предпочтений."
             ),
+            404: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        "Объект не найден",
+                        summary="Предпочтения не найдены",
+                        description="Указанный объект предпочтений отсутствует в базе данных.",
+                        value={"error": "Preferences not found"}
+                    )
+                ]
+            )
         },
         tags=['preferences']
+
     )
+
     def get(self, request, preferences_pk=None):
+        paginator = CustomPagination()
+
         if preferences_pk:
             try:
-                preferences = Preferences.objects.get(pk=preferences_pk)
+                preferences = Preferences.objects.get(pk=preferences_pk, id_user=request.user.id)
                 serializer = PreferencesSerializer(preferences)
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Preferences.DoesNotExist:
                 return Response({"error": "Preferences not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
-
             preferences = Preferences.objects.filter(id_user=request.user.id)
-            serializer = PreferencesSerializer(preferences, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            paginated_preferences = paginator.paginate_queryset(preferences, request)
+            serializer = PreferencesSerializer(paginated_preferences, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     @extend_schema(
         summary="Обновить предпочтения",
         description="Обновляет объект Preferences по ID.",
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="Bearer eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
         request=PreferencesSerializer,
         responses={
-            200: PreferencesSerializer,
-            404: OpenApiExample(
-                "Объект не найден",
-                value={"error": "Preferences not found"}
+            200: OpenApiResponse(
+                response=PreferencesSerializer,
+                description="Предпочтения успешно обновлены."
             ),
-            400: OpenApiExample(
-                "Ошибка валидации",
-                value={"error": "Invalid data"}
+            404: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        "Объект не найден",
+                        summary="Предпочтения не найдены",
+                        description="Указанный объект предпочтений отсутствует в базе данных.",
+                        value={"error": "Preferences not found"}
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        "Ошибка валидации",
+                        summary="Некорректные данные",
+                        description="Предоставлены некорректные данные для обновления предпочтений.",
+                        value={"error": "Invalid data"}
+                    )
+                ]
             )
         },
         tags=['preferences']
@@ -102,14 +200,33 @@ class PreferencesAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
     @extend_schema(
         summary="Удаление предпочтений пользователя",
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
         responses={
             204: OpenApiExample(
                 "Удалено успешно",
-                value={"message": "Preference deleted successfully"}
+                value={"message": "Preferences deleted successfully"}
             ),
+            404: OpenApiExample(
+                "Объект не найден",
+                value={"error": "Preferences not found"}
+            )
         },
         tags=['preferences']
     )
@@ -132,6 +249,22 @@ class GeneratePlanAPIView(APIView):
         description=(
             "Генерирует тренировочный план на основе предпочтений пользователя с использованием OpenAI."
         ),
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
         request=PreferencesSerializer,
         responses={
             201: PlanSerializer,
@@ -277,6 +410,8 @@ class GeneratePlanAPIView(APIView):
         tags=["plan generation"]
     )
     def get(self, request, preferences_pk=None, plan_pk=None):
+        paginator = CustomPagination()
+
         if preferences_pk and plan_pk:
             try:
                 plan = Plan.objects.get(pk=plan_pk, id_preferences_id=preferences_pk, id_user=request.user)
@@ -287,26 +422,77 @@ class GeneratePlanAPIView(APIView):
 
         elif preferences_pk:
             plans = Plan.objects.filter(id_preferences_id=preferences_pk, id_user=request.user)
-            serializer = PlanDetailSerializer(plans, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            paginated_plans = paginator.paginate_queryset(plans, request)
+            serializer = PlanDetailSerializer(paginated_plans, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
         elif plan_pk:
             plans = Plan.objects.filter(pk=plan_pk, id_user=request.user)
-            serializer = PlanDetailSerializer(plans, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
+            paginated_plans = paginator.paginate_queryset(plans, request)
+            serializer = PlanDetailSerializer(paginated_plans, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
         else:
             plans = Plan.objects.filter(id_user=request.user)
-            serializer = PlanDetailSerializer(plans, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            paginated_plans = paginator.paginate_queryset(plans, request)
+            serializer = PlanDetailSerializer(paginated_plans, many=True)
+            return paginator.get_paginated_response(serializer.data)
 
     @extend_schema(
-        summary="удалить план",
+        summary="Удалить план или все планы для предпочтений",
+        description=(
+                "Удаляет конкретный план по `plan_pk` и `preferences_pk`, все планы для указанных предпочтений "
+                "по `preferences_pk`, или все планы, если не указан `preferences_pk` и `plan_pk`."
+        ),
+        request=None,
         responses={
-            200: PlanDetailSerializer(many=True),
+            200: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        "Успешное удаление плана",
+                        summary="Успешное удаление",
+                        description="План был успешно удалён.",
+                        value={"message": "План успешно удалён"}
+                    ),
+                    OpenApiExample(
+                        "Успешное удаление планов",
+                        summary="Успешное удаление всех планов",
+                        description="Все планы для указанных предпочтений были успешно удалены.",
+                        value={"message": "Планы успешно удалены"}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        "План не найден",
+                        summary="План не найден",
+                        description="Указанный план не найден в базе данных.",
+                        value={"error": "План не найден"}
+                    ),
+                    OpenApiExample(
+                        "Планы не найдены",
+                        summary="Планы не найдены",
+                        description="Для указанных предпочтений планы не найдены.",
+                        value={"error": "Планы для указанных предпочтений не найдены"}
+                    )
+                ]
+            ),
+            400: OpenApiResponse(
+                response=OpenApiTypes.OBJECT,
+                examples=[
+                    OpenApiExample(
+                        "Некорректный запрос",
+                        summary="Некорректный запрос",
+                        description="Не указаны идентификаторы предпочтений или плана.",
+                        value={"error": "Не указаны ID предпочтений или плана"}
+                    )
+                ]
+            )
         },
-        tags=["plan generation"]
+        tags=['plan generation']
     )
     def delete(self, request, preferences_pk=None, plan_pk=None):
         if preferences_pk and plan_pk:
