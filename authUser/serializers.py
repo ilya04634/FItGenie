@@ -1,12 +1,14 @@
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
 import re
+from rest_framework import serializers
+from .models import CustomUser
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    avatar_url = serializers.SerializerMethodField()
 
     class Meta:
         model = get_user_model()
-        fields = ['nickname', 'email', 'first_name', 'last_name', 'password']
+        fields = ['nickname', 'email', 'first_name', 'last_name', 'avatar_url', 'password']
 
     def create(self, validated_data):
         return get_user_model().objects.create_user(**validated_data)
@@ -17,6 +19,11 @@ class UserSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+    def get_avatar_url(self, obj):
+        if obj.avatar:
+            return obj.avatar.url
+        return None
 
 
     def validate_email(self, value):
@@ -52,4 +59,12 @@ class EmailVerificationSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         instance.password = validated_data.pop('password')
+
+
+
+
+class AvatarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['avatar']
 

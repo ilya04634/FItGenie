@@ -1,5 +1,7 @@
 import os
 import json
+
+from django_filters.rest_framework import DjangoFilterBackend
 from dotenv import load_dotenv
 from drf_spectacular.types import OpenApiTypes
 from openai import OpenAI
@@ -7,10 +9,13 @@ from django.conf import settings
 from datetime import datetime, timedelta
 
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import JSONRenderer
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
+from rest_framework.viewsets import ModelViewSet
 from .models import Preferences, Plan, Exercises, Weekly_Schedule
 from .serializers import PreferencesSerializer, PlanSerializer, ExerciseSerializer, WeeklyScheduleSerializer, \
     PlanDetailSerializer
@@ -28,9 +33,24 @@ class CustomPagination(PageNumberPagination):
     page_size_query_param = 'page_size'  # Позволяет клиенту запрашивать больше или меньше элементов
     max_page_size = 10  # Максимальное количество элементов на странице
 
+class PreferencesViewSet(ModelViewSet):
+    queryset = Preferences.objects.all().order_by('id')  # Добавляем сортировку
+    serializer_class = PreferencesSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['experience_level', 'age']
+    pagination_class = CustomPagination  # Указываем пагинатор
+
+    def list(self, request, *args, **kwargs):
+        print("GET params:", request.GET)  # Выводим параметры фильтрации
+        queryset = self.filter_queryset(self.get_queryset())  # Применяем фильтрацию
+        print("Filtered queryset:", queryset.query)  # Проверяем SQL-запрос
+        return super().list(request, *args, **kwargs)
+
 
 class PreferencesAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+    renderer_classes = [JSONRenderer]
 
     @extend_schema(
         summary="Создать предпочтения",
@@ -242,6 +262,8 @@ class PreferencesAPIView(APIView):
 
 
 
+
+
 class GeneratePlanAPIView(APIView):
     permission_classes = [IsAuthenticated]
     @extend_schema(
@@ -404,6 +426,22 @@ class GeneratePlanAPIView(APIView):
 
     @extend_schema(
         summary="Получить список сгенерированных планов",
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
         responses={
             200: PlanDetailSerializer(many=True),
         },
@@ -444,6 +482,22 @@ class GeneratePlanAPIView(APIView):
                 "Удаляет конкретный план по `plan_pk` и `preferences_pk`, все планы для указанных предпочтений "
                 "по `preferences_pk`, или все планы, если не указан `preferences_pk` и `plan_pk`."
         ),
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
         request=None,
         responses={
             200: OpenApiResponse(
