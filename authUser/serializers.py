@@ -68,3 +68,5 @@ class AvatarSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = ['avatar']
 
+
+

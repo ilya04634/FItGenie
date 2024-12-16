@@ -22,14 +22,12 @@ class RegisterView(APIView):
         description="Позволяет зарегистрировать нового пользователя, отправив данные через POST-запрос.",
         request=UserSerializer,
         responses={
-            201: OpenApiExample(
-                "Успешный ответ",
-                value={"message": "User created successfully"}
+            201: OpenApiResponse(
+                description="user created successfully",
             ),
-            400: OpenApiExample(
-                "Ошибка валидации",
-                value={"email": ["This field is required."]}
-            )
+            400: OpenApiResponse(
+                description="ошибка",
+            ),
         },
     )
     def post(self, request):
@@ -60,7 +58,7 @@ class AvatarUploadView(APIView):
         ),
         parameters=[
             OpenApiParameter(
-                name="Authorization",
+                name="Authorization and image",
                 description="Bearer access token для аутентификации",
                 required=True,
                 type=OpenApiTypes.STR,
@@ -236,6 +234,64 @@ class AvatarUploadView(APIView):
             return Response({"error": "Аватар не установлен"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({"avatar_url": user.avatar.url}, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Удалить аватар",
+        description=(
+                "Удаляет текущий аватар пользователя. Требуется наличие JWT access токена. "
+                "Если аватар отсутствует, вернётся ошибка."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="Authorization",
+                description="Bearer access token для аутентификации",
+                required=True,
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.HEADER,
+                examples=[
+                    OpenApiExample(
+                        "Пример токена",
+                        summary="Bearer Token",
+                        value="eyJhbGciOiJIUzI1NiIsInR5..."
+                    )
+                ]
+            )
+        ],
+        responses={
+            200: OpenApiResponse(
+                description="Аватар успешно удалён.",
+                examples=[
+                    OpenApiExample(
+                        "Успешный ответ",
+                        summary="Аватар удалён",
+                        value={"message": "Аватар успешно удалён"}
+                    )
+                ]
+            ),
+            404: OpenApiResponse(
+                description="Аватар не найден.",
+                examples=[
+                    OpenApiExample(
+                        "Аватар отсутствует",
+                        summary="Ошибка",
+                        value={"error": "Аватар не установлен"}
+                    )
+                ]
+            )
+        },
+        tags=["avatar"]
+    )
+    def delete(self, request):
+        user = request.user
+
+        if not user.avatar:
+            return Response({"error": "Аватар не установлен"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Удаление аватара
+        user.avatar.delete()  # Удаляет файл с диска, если используется FileField/ImageField
+        user.save()
+
+        return Response({"message": "Аватар успешно удалён"}, status=status.HTTP_200_OK)
 
 
 class CodeCheckVerifiedAPIView(APIView):

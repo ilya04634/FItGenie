@@ -7,7 +7,9 @@ from drf_spectacular.types import OpenApiTypes
 from openai import OpenAI
 from django.conf import settings
 from datetime import datetime, timedelta
+from rest_framework.filters import OrderingFilter, SearchFilter
 
+from .filters import PreferencesFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
@@ -29,9 +31,10 @@ client = OpenAI(
 
 
 class CustomPagination(PageNumberPagination):
-    page_size = 2  # Количество элементов на странице по умолчанию
-    page_size_query_param = 'page_size'  # Позволяет клиенту запрашивать больше или меньше элементов
-    max_page_size = 10  # Максимальное количество элементов на странице
+    page_size = 2
+    page_size_query_param = 'page_size'
+    max_page_size = 10
+
 
 class PreferencesViewSet(ModelViewSet):
     queryset = Preferences.objects.all().order_by('id')  # Добавляем сортировку
@@ -40,17 +43,21 @@ class PreferencesViewSet(ModelViewSet):
     filterset_fields = ['experience_level', 'age']
     pagination_class = CustomPagination  # Указываем пагинатор
 
-    def list(self, request, *args, **kwargs):
-        print("GET params:", request.GET)  # Выводим параметры фильтрации
-        queryset = self.filter_queryset(self.get_queryset())  # Применяем фильтрацию
-        print("Filtered queryset:", queryset.query)  # Проверяем SQL-запрос
-        return super().list(request, *args, **kwargs)
+    # def list(self, request, *args, **kwargs):
+    #     print("GET params:", request.GET)  # Выводим параметры фильтрации
+    #     queryset = self.filter_queryset(self.get_queryset())  # Применяем фильтрацию
+    #     print("Filtered queryset:", queryset.query)  # Проверяем SQL-запрос
+    #     return super().list(request, *args, **kwargs)
 
 
 class PreferencesAPIView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser]
     renderer_classes = [JSONRenderer]
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filterset_class = PreferencesFilter
+    ordering_fields = ['age', 'gender', 'experience_level']
+    search_fields = ['goal', 'prefer_workout_ex']
 
     @extend_schema(
         summary="Создать предпочтения",
@@ -143,6 +150,7 @@ class PreferencesAPIView(APIView):
 
     def get(self, request, preferences_pk=None):
         paginator = CustomPagination()
+        # filterset = PreferencesFilter(request.GET, queryset=Preferences.objects.all())
 
         if preferences_pk:
             try:
@@ -151,11 +159,25 @@ class PreferencesAPIView(APIView):
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Preferences.DoesNotExist:
                 return Response({"error": "Preferences not found"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            preferences = Preferences.objects.filter(id_user=request.user.id)
-            paginated_preferences = paginator.paginate_queryset(preferences, request)
-            serializer = PreferencesSerializer(paginated_preferences, many=True)
-            return paginator.get_paginated_response(serializer.data)
+        # else:
+        #     preferences = Preferences.objects.filter(id_user=request.user.id)
+        #     paginated_preferences = paginator.paginate_queryset(preferences, request)
+        #     serializer = PreferencesSerializer(paginated_preferences, many=True)
+        #     return paginator.get_paginated_response(serializer.data)
+
+        preferences = Preferences.objects.filter(id_user=request.user.id)
+
+        # Применяем фильтрацию
+        filterset = self.filterset_class(request.GET, queryset=preferences)
+        if not filterset.is_valid():
+            return Response({"error": "Invalid filters", "details": filterset.errors},
+                            status=status.HTTP_400_BAD_REQUEST)
+        filtered_preferences = filterset.qs
+
+        paginated_preferences = paginator.paginate_queryset(filtered_preferences, request)
+        serializer = PreferencesSerializer(paginated_preferences, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
 
     @extend_schema(
         summary="Обновить предпочтения",
@@ -239,13 +261,18 @@ class PreferencesAPIView(APIView):
             )
         ],
         responses={
-            204: OpenApiExample(
-                "Удалено успешно",
-                value={"message": "Preferences deleted successfully"}
+            204: OpenApiResponse(
+                description="Удалено успешно.",
             ),
-            404: OpenApiExample(
-                "Объект не найден",
-                value={"error": "Preferences not found"}
+            404: OpenApiResponse(
+                description="Объект не найден.",
+                examples=[
+                    OpenApiExample(
+                        "Пример ошибки",
+                        summary="Объект отсутствует",
+                        value={"error": "Preferences not found"}
+                    )
+                ]
             )
         },
         tags=['preferences']
