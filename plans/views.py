@@ -419,7 +419,7 @@ class GeneratePlanAPIView(APIView):
                 description=plan_data["description"],
                 program_duration=plan_data["program_duration"],
                 id_user=request.user,
-                id_preferences = Preferences.objects.get(pk=plan_data["preferences"])
+                id_preferences = Preferences.objects.get(pk=preferences_pk)
             )
 
             for day in plan_data["weekly_schedule"]:
