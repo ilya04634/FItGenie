@@ -127,12 +127,10 @@ SIMPLE_JWT = {
 }
 
 
-OPENAI_API_KEY = config('OPEN_API_KEY')
+# OPENAI_API_KEY = config('OPEN_API_KEY')
 
 
 WSGI_APPLICATION = 'fit.wsgi.application'
-
-AUTH_USER_MODEL = 'authUser.CustomUser'
 
 
 # Database
